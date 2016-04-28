@@ -11,7 +11,9 @@ function renderElement (context, element, parent) {
     x: element.x ? parent.x + element.x : parent.x,
     y: element.y ? parent.y + element.y : parent.y
   };
-  
+
+  context.save();
+
   if (element.font) {
     context.font = element.font;
   }
@@ -28,7 +30,13 @@ function renderElement (context, element, parent) {
     drawLine(context, element, origin);
   }
 
+  if (element.kind === 'rotate') {
+    performRotation(context, element)
+  }
+
   element.children && element.children.forEach(child => renderElement(context, child, element))
+
+  context.restore();
 }
 
 function drawLine(context, element, origin) {
@@ -117,6 +125,10 @@ function drawText(context, element, origin) {
   });
 }
 
+function performRotation(context, element) {
+  context.rotate(element.angle);
+}
+
 export function c (kind, opts, children) {
   if (opts.children) {
     children = opts.children;
@@ -153,6 +165,14 @@ export function line (opts, children) {
     }
   };
   return c('line', {...defaults, ...opts}, children);
+}
+
+export function rotate (opts, children) {
+  const defaults = {
+    angle: 0
+  }
+
+  return c('rotate', {...defaults, ...opts}, children);
 }
 
 export function makeCanvasDriver (selector, {width, height}) {
