@@ -397,40 +397,25 @@ export function image (opts) {
 }
 
 export function makeCanvasDriver (selector, canvasSize = null) {
-  let canvas = root.document.querySelector(selector)
+  let hostCanvas = root.document.querySelector(selector)
 
-  if (!canvas) {
-    canvas = root.document.createElement('canvas')
+  if (!hostCanvas) {
+    hostCanvas = root.document.createElement('canvas')
 
     root.document.body.appendChild(canvas)
   }
 
   if (canvasSize) {
-    canvas.width = canvasSize.width
-    canvas.height = canvasSize.height
+    hostCanvas.width = canvasSize.width
+    hostCanvas.height = canvasSize.height
   }
 
-  const context = canvas.getContext('2d')
+  const context = hostCanvas.getContext('2d')
 
   let driver = function canvasDriver (sink$) {
     sink$.addListener({
       next: rootElement => {
-        const defaults = {
-          kind: 'rect',
-          x: 0,
-          y: 0,
-          width: canvas.width,
-          height: canvas.height,
-          draw: [
-            {clear: true}
-          ]
-        }
-
-        const rootElementWithDefaults = Object.assign(
-          {},
-          defaults,
-          rootElement
-        )
+        const rootElementWithDefaults = getRootElementWithDefaults(hostCanvas, rootElement)
 
         const instructions = translateVtreeToInstructions(rootElementWithDefaults)
 
@@ -441,9 +426,46 @@ export function makeCanvasDriver (selector, canvasSize = null) {
     })
 
     return {
-      events: eventName => adapt(fromEvent(canvas, eventName))
+      events: eventName => adapt(fromEvent(hostCanvas, eventName))
     }
   }
 
   return driver
+}
+
+export function canvasDriver (sink$) {
+  sink$.addListener({
+    next: ({hostCanvas, rootElement}) => {
+      const context = hostCanvas.getContext('2d')
+
+      const rootElementWithDefaults = getRootElementWithDefaults(hostCanvas, rootElement)
+
+      const instructions = translateVtreeToInstructions(rootElementWithDefaults)
+
+      renderInstructionsToCanvas(instructions, context)
+    },
+    error: e => { throw e },
+    complete: () => null
+  })
+
+  return adapt(xs.empty())
+}
+
+function getRootElementWithDefaults (hostCanvas, rootElement) {
+  const defaults = {
+    kind: 'rect',
+    x: 0,
+    y: 0,
+    width: hostCanvas.width,
+    height: hostCanvas.height,
+    draw: [
+      {clear: true}
+    ]
+  }
+
+  return Object.assign(
+    {},
+    defaults,
+    rootElement
+  )
 }

@@ -35,7 +35,7 @@
   },
   "homepage": "https://github.com/Widdershin/cycle-canvas",
   "devDependencies": {
-    "@cycle/dom": "^15.0.0",
+    "@cycle/dom": "^19.3.0",
     "@cycle/isolate": "^2.0.0",
     "@cycle/rxjs-run": "^4.1.0",
     "@cycle/time": "^0.7.3",

@@ -64,6 +64,42 @@ Looks like this:
 
 ![img](http://i.imgur.com/1LCZxrg.png)
 
+<a id="canvasDriverExample"></a>
+Or in case the canvas element appears later, for example, when it's created by DOM driver:
+
+```jsx
+import {run} from '@cycle/rxjs-run';
+import {makeDOMDriver} from '@cycle/dom'
+import {canvasDriver, rect} from 'cycle-canvas';
+import {Observable} from 'rxjs'
+
+function main (sources) {
+  const hostCanvas$ = sources.DOM.select('canvas').element()
+  const rootElement$ = Observable.of(rect({
+    x: 10,
+    y: 10,
+    width: 160,
+    height: 100,
+    draw: [
+      {fill: 'purple'}
+    ]
+  }))
+  return {
+    DOM: Observable.of(<canvas width="200" height="200"></canvas>),
+    Canvas: Observable.combineLatest(hostCanvas$, rootElement$).map(([hostCanvas, rootElement]) => {
+      return {hostCanvas, rootElement}
+    })
+  };
+}
+
+const drivers = {
+  DOM: makeDOMDriver('body'),
+  Canvas: canvasDriver
+};
+
+run(main, drivers);
+```
+
 Also check out the [flappy bird example](https://cyclejs-community.github.io/cycle-canvas/).
 
 You can find the source for flappy bird [here](https://github.com/cyclejs-community/cycle-canvas/tree/master/examples/flappy-bird).
@@ -73,10 +109,7 @@ You can find the source for flappy bird [here](https://github.com/cyclejs-commun
 #### Creating a canvas driver
 
 - [`makeCanvasDriver`](#makeCanvasDriver)
-
-#### Using event streams of the canvas element
-
-- [`sources.Canvas.events`](#events)
+- [`canvasDriver`](#canvasDriver)
 
 #### Drawing shapes and text
 
@@ -109,13 +142,11 @@ The input to this driver is a stream of drawing instructions and transformations
 - `selector: string` a css selector to use in order to find a canvas to attach the driver to.
 - `canvasSize: {width: integer, height: integer}` an object that denotes the size to set for the attached canvas. If null, the driver attaches to its canvas without altering its size.
 
-## Using event streams of the canvas element
+#### Listening to event streams of the canvas element: `sources.Canvas.events(eventName)`
 
-### <a id="events"></a> `sources.Canvas.events(eventName)`
+Canvas driver produced by `makeCanvasDriver` function exposes a source object with an `events` method, which works similarly to the `events` method of the DOM driver.
 
-Canvas driver exposes a source object with an `events` method, which works similarly to the `events` method of the DOM driver.
-
-#### Example:
+##### Example:
 ```js
 import {run} from '@cycle/rxjs-run';
 import {makeCanvasDriver, rect, text} from 'cycle-canvas';
@@ -150,6 +181,21 @@ const drivers = {
 run(main, drivers);
 ```
 
+### <a id="canvasDriver"></a> `canvasDriver`
+
+An alternative canvas driver function to be used directly without a factory.
+
+It requires events in the sink to be of this format:
+```js
+{
+  hostCanvas: hostCanvas,
+  rootElement: rootElement
+}
+```
+where `hostCanvas` is a `<canvas>` DOM element and `rootElement` is the element to draw on the `hostCanvas`.
+
+You can find an [example](#canvasDriverExample) at the top.
+
 ## Drawing shapes and text
 
 ### <a id="rect"></a> `rect(params = {})`
@@ -171,24 +217,24 @@ Draws a rectangle given an object containing drawing parameters.
 #### Example:
 ```js
 rect({
-	x: 10,
-	y: 10,
-	width: 100,
-	height: 100,
-	draw: [
-		{fill: 'purple'}
-	],
-	children: [
-		rect({
-			x: 20,
-			y: 20,
-			width: 50,
-			height: 50,
-			draw: [
-				{fill: 'blue'}
-			]
-		})
-	]
+  x: 10,
+  y: 10,
+  width: 100,
+  height: 100,
+  draw: [
+    {fill: 'purple'}
+  ],
+  children: [
+    rect({
+      x: 20,
+      y: 20,
+      width: 50,
+      height: 50,
+      draw: [
+        {fill: 'blue'}
+      ]
+    })
+  ]
 })
 ```
 
@@ -212,19 +258,19 @@ Draws line(s) given an object containing drawing parameters.
 #### Example:
 ```js
 line({
-	x: 10,
-	y: 10,
-	style: {
-		lineWidth: 2,
-		lineCap: 'square',
-		strokeStyle: '#CCCCCC'
-	},
-	points: [
-		{x: 10, y: 10},
-		{x: 10, y: 20},
-		{x: 20, y: 10},
-		{x: 10, y: 10}
-	]
+  x: 10,
+  y: 10,
+  style: {
+    lineWidth: 2,
+    lineCap: 'square',
+    strokeStyle: '#CCCCCC'
+  },
+  points: [
+    {x: 10, y: 10},
+    {x: 10, y: 20},
+    {x: 20, y: 10},
+    {x: 10, y: 10}
+  ]
 })
 ```
 
@@ -272,17 +318,17 @@ Draws line(s) given an object containing drawing parameters.
 #### Example:
 ```js
 polygon({
-	points: [
-		{x: 10, y: 0},
-		{x: 0, y: 10},
-		{x: 0, y: 30},
-		{x: 30, y: 30},
-		{x: 30, y: 10} // a house shaped polygon
-	],
-	draw: {
-		stroke: '#000',
-		fill: '#ccc'
-	},
+  points: [
+    {x: 10, y: 0},
+    {x: 0, y: 10},
+    {x: 0, y: 30},
+    {x: 30, y: 30},
+    {x: 30, y: 10} // a house shaped polygon
+  ],
+  draw: {
+    stroke: '#000',
+    fill: '#ccc'
+  },
 })
 ```
 
@@ -304,13 +350,13 @@ Draws text given an object containing drawing parameters.
 #### Example:
 ```js
 text({
-	x: 10,
-	y: 10,
-	value: 'Hello World!',
-	font: '18pt Arial',
-	draw: [
-		{fill: 'white'}
-	]
+  x: 10,
+  y: 10,
+  value: 'Hello World!',
+  font: '18pt Arial',
+  draw: [
+    {fill: 'white'}
+  ]
 })
 ```
 
@@ -333,8 +379,8 @@ Draws an image given an object containing drawing parameters.
 #### Example:
 ```js
 image({
-	x: 10,
-	y: 10,
+  x: 10,
+  y: 10,
   src: document.querySelector('img')
 })
 ```
@@ -348,18 +394,18 @@ Moves the canvas origin to a different point.
 
 #### Example:
 ```js
-	rect({
-		transformations: [
+  rect({
+    transformations: [
       {translate: {x: 10, y: 10}}
     ],
-		x: 100,
-		y: 100,
-		width: 150,
-		height: 150,
-		draw: [
-			{fill: 'purple'}
-		]
-	})
+    x: 100,
+    y: 100,
+    width: 150,
+    height: 150,
+    draw: [
+      {fill: 'purple'}
+    ]
+  })
 ```
 
 ### <a id="rotate"></a> `rotate: number`
@@ -368,18 +414,18 @@ Rotate the canvas around the current origin.
 
 #### Example:
 ```js
-	rect({
-		transformations: [
-		  {rotate: (20*Math.PI/180)}
+  rect({
+    transformations: [
+      {rotate: (20*Math.PI/180)}
     ],
-		x: 10,
-		y: 10,
-		width: 150,
-		height: 150,
-		draw: [
-			{fill: 'purple'}
-		]
-	})
+    x: 10,
+    y: 10,
+    width: 150,
+    height: 150,
+    draw: [
+      {fill: 'purple'}
+    ]
+  })
 ```
 
 ### <a id="scale"></a> `scale: {x: number, y: number}`
@@ -388,18 +434,18 @@ Scales the drawing bigger or smaller.
 
 #### Example:
 ```js
-	rect({
-		transformations: [
-		  {scale: {x: 2, y: 2}},
+  rect({
+    transformations: [
+      {scale: {x: 2, y: 2}},
     ],
-		x: 10,
-		y: 10,
-		width: 150,
-		height: 150,
-		draw: [
-			{fill: 'purple'}
-		]
-	})
+    x: 10,
+    y: 10,
+    width: 150,
+    height: 150,
+    draw: [
+      {fill: 'purple'}
+    ]
+  })
 ```
 
 ### Combining transformations
@@ -408,17 +454,17 @@ Scales the drawing bigger or smaller.
 
 Rotate around the point (100, 100) and draw a 50x50px box centered there:
 ```js
-	rect({
-		transformations: [
+  rect({
+    transformations: [
       {translate: {x: 100, y: 100}},
       {rotate: (20*Math.PI/180)}
     ],
-		x: -25, // At this point, {x: 0, y: 0} is a point on position {x: 100, y: 100} of the canvas
-		y: -25,
-		width: 50,
-		height: 50,
-		draw: [
-			{fill: 'purple'}
-		]
-	})
+    x: -25, // At this point, {x: 0, y: 0} is a point on position {x: 100, y: 100} of the canvas
+    y: -25,
+    width: 50,
+    height: 50,
+    draw: [
+      {fill: 'purple'}
+    ]
+  })
 ```

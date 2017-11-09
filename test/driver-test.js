@@ -1,5 +1,5 @@
 /* globals describe, it */
-import {translateVtreeToInstructions, renderInstructionsToCanvas, rect, line, arc, text, polygon, image, makeCanvasDriver} from '../src/canvas-driver'
+import {translateVtreeToInstructions, renderInstructionsToCanvas, rect, line, arc, text, polygon, image, makeCanvasDriver, canvasDriver} from '../src/canvas-driver'
 import assert from 'assert'
 import root from 'window-or-global'
 import {JSDOM} from 'jsdom'
@@ -12,7 +12,7 @@ function methodSpy () {
   const stub = (...args) => {
     called += 1
     callArgs.push(args)
-  };
+  }
 
   stub.callCount = () => called
   stub.callArgs = () => callArgs
@@ -963,4 +963,59 @@ describe('canvasDriver', () => {
       canvasEl.dispatchEvent(event)
     })
   })
+
+  describe('canvasDriver', () => {
+    it('is a canvas driver function, a sink to which must emit hostCanvas DOM element along with rootElement to draw on that hostCanvas', () => {
+      const jsdom = new JSDOM('<!DOCTYPE html><html><body><canvas width="100" height="100"></canvas></body></html>')
+
+      const actualContextOperations = []
+      const context = mockContext(operation => actualContextOperations.push(operation))
+
+      const hostCanvas = jsdom.window.document.querySelector('canvas')
+      hostCanvas.getContext = which => which === '2d' && context
+
+      const rootElement = rect({
+        x: 10,
+        y: 20,
+        width: 30,
+        height: 40,
+        draw: [{fill: 'black'}]
+      })
+
+      const vcanvas$ = xs.of({
+        hostCanvas,
+        rootElement
+      })
+
+      canvasDriver(vcanvas$)
+
+      const expectedContextOperations = [
+        {call: 'save', args: []},
+        {set: 'lineWidth', value: 1},
+        {set: 'fillStyle', value: 'black'},
+        {call: 'fillRect', args: [10, 20, 30, 40]},
+        {call: 'restore', args: []}
+      ]
+
+      assert.deepEqual(actualContextOperations, expectedContextOperations)
+    })
+  })
+
+  function mockContext (operationCallback) {
+    return new Proxy({}, {
+      get: (_, methodName) => {
+        return (...args) => operationCallback({
+          call: methodName,
+          args
+        })
+      },
+      set: (_, propName, value) => {
+        operationCallback({
+          set: propName,
+          value
+        })
+        return true
+      }
+    })
+  }
 })
